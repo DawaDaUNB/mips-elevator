@@ -165,6 +165,196 @@ getButtons:
  
 # -----------------------------------------------------------------------------------------------------------
 
+# In addition to choosing which direction and whether to go, this function also chooses whether the doors should be opened (but not closed)
+# Clobbers: $t0-$t4
+# Modifies: $s1-$s7 (global state registers), $t8
+chooseDirection:
+ # service current floor if there is a pending request.
+ addi $t0, $s0, -1  # t0 = current floor - 1 (for shift amount)
+ li $t1, 1          # t1 = 1
+ sllv $t1, $t1, $t0 # t1 = 1 << current floor -1 = bitmask of current floor in s6
+ and $t2, $s6, $t1  # t2 = interior request for current floor
+ 
+ # check the external call for the current floor.
+ # The external call registers are: s1 (floor 1), s2 (floor 2), ... s5 (floor 5), so we check the current floor and copy that to $t3
+ beq $s0, 1, curr1
+ beq $s0, 2, curr2
+ beq $s0, 3, curr3
+ beq $s0, 4, curr4
+ beq $s0, 5, curr5
+ 
+ curr1: move $t3, $s1
+        j currdone
+ curr2: move $t3, $s2
+        j currdone
+ curr3: move $t3, $s3
+        j currdone
+ curr4: move $t3, $s4
+        j currdone
+ curr5: move $t3, $s5
+        j currdone
+ 
+ currdone:
+ li $t0, 1
+ sllv $t0, $t0, $s7 # $t1 = 1 if s7 is 0, 2 if s7 is 1.
+ and $t3, $t3, $t0  # mask off up/down for exterior buttons
+ #if either interior or exterior buttons are pending, jump to service them.
+ bne $t2, $zero, service # check inside buttons
+ bne $t3, $zero, service # check outside buttons
+ 
+ # No request at current floor. Check that some pending request exists anywhere.
+ li $t0, 31        # 0x1F, mask for interior requests floors 1-5.
+ and $t1, $s6, $t0 # All pending interior requests.
+ or $t2, $s1, $s2  # combine requests from 1 and 2
+ or $t2, $t2, $s3  # add floor 3 requests
+ or $t2, $t2, $s4  # add floor 4 requests
+ or $t2, $t2, $s5  # add floor 5 requests
+ or $t2, $t2, $t1  # if any request exists inside or out, t2 != 0
+ beq $t2, $zero, nopending
+ 
+ # Look in the current direction as defined by s7
+ bne $s7, $zero, checkup # if s7 != 0, we're going up.
+ j checkdown             # else, go down.
+ 
+ # Check upwards
+ checkup:
+  move $t0, $s0    # start from the current floor
+  checkuploop:
+  addi $t0, $t0, 1 # and move up.
+  ble $t0, 5, checkupinner
+  j nopendingup
+  
+  checkupinner:
+   # check interior on floor t0
+   move $t1, $t0
+   addi $t1, $t1, -1  # bit index
+   li $t3, 1
+   sllv $t3, $t3, $t1 # t3 = 1 << (t0 - 1) = bit index
+   and $t4, $s6, $t3  # check interior button for t0
+   bne $t4, $zero, foundup
+   
+   # check external request for floor t0
+   li $t4, 0
+   beq $t0, 1, upfloor1
+   beq $t0, 2, upfloor2
+   beq $t0, 3, upfloor3
+   beq $t0, 4, upfloor4
+   beq $t0, 5, upfloor5
+   
+   upfloor1: move $t4, $s1
+             j upcheck
+   upfloor2: move $t4, $s2
+             j upcheck
+   upfloor3: move $t4, $s3
+             j upcheck
+   upfloor4: move $t4, $s4
+             j upcheck
+   upfloor5: move $t4, $s5
+             j upcheck
+             
+   upcheck:
+   andi $t4, $t4, 2        # Ensure that we only check for up requests
+   bne $t4, $zero, foundup # if external request exists, we have a pending call
+   j checkuploop # check the next floor
+   
+   foundup:
+   jr $ra # return (and continue in the same direction)
+   
+   nopendingup:
+   # No pending request found above this floor.
+   li $s7, 0   #change direction to down.
+   j checkdown
+   
+ # Check downwards
+ checkdown:
+  move $t0, $s0    # start from the current floor
+  checkdownloop:
+  addi $t0, $t0, -1 # and move down.
+  blt $t0, 1, nopendingdown
+  
+  checkdowninner:
+   # check interior on floor t0
+   move $t1, $t0
+   addi $t1, $t1, -1  # bit index
+   li $t3, 1
+   sllv $t3, $t3, $t1 # t3 = 1 << (t0 - 1) = bit index
+   and $t4, $s6, $t3  # check interior button for t0
+   bne $t4, $zero, founddown
+   
+   # check external request for floor t0
+   li $t4, 0
+   beq $t0, 1, downfloor1
+   beq $t0, 2, downfloor2
+   beq $t0, 3, downfloor3
+   beq $t0, 4, downfloor4
+   beq $t0, 5, downfloor5
+   
+   downfloor1: move $t4, $s1
+             j downcheck
+   downfloor2: move $t4, $s2
+             j downcheck
+   downfloor3: move $t4, $s3
+             j downcheck
+   downfloor4: move $t4, $s4
+             j downcheck
+   downfloor5: move $t4, $s5
+             j downcheck
+             
+   downcheck:
+   andi $t4, $t4, 1        # Ensure that we only check for down requests
+   bne $t4, $zero, founddown # if external request exists, we have a pending call
+   j checkdownloop # check the next floor
+   
+   founddown:
+   jr $ra # return (and continue in the same direction)
+   
+   nopendingdown:
+   # No pending request found above this floor.
+   li $s7, 1   #change direction to up.
+   j checkup
+  
+ 
+ service:
+  li $t9, 0 # stop the elevator
+  li $t8, 1 # open the doors
+  # clear interior request for the current floor
+  addi $t0, $s0, -1   # Compute bit index (current floor - 1)
+  li $t1, 1
+  sllv $t1, $t1, $t0  # t1 = 1 << (current floor - 1) = current floor bitmask
+  nor $t2, $t1, $zero # t2 = ~t1 (bitwise not of t1)
+  and $s6, $s6, $t2   # clear the interior button.
+  
+  li $t0, 1          # load 1 into t0
+  sllv $t0, $t0, $s7 # if elevator is going up, shift it to 2
+  not $t0, $t0       # invert t0 so it can be used with and to clear the relevant bit.
+  
+  # Clear the relevant external button
+  beq   $s0, 1, clrfloor1
+  beq   $s0, 2, clrfloor2
+  beq   $s0, 3, clrfloor3
+  beq   $s0, 4, clrfloor4
+  beq   $s0, 5, clrfloor5
+  
+  clrfloor1: and $s1, $s1, $t0
+              j service_done
+  clrfloor2: and $s2, $s2, $t0
+              j service_done
+  clrfloor3: and $s3, $s3, $t0
+              j service_done
+  clrfloor4: and $s3, $s4, $t0
+              j service_done
+  clrfloor5: and $s4, $s5, $t0
+              j service_done
+  
+  service_done: jr $ra
+  
+ no_pending:
+  li $t8, 0 # doors should stay closed
+  li $t9, 0 # elevator should stay stopped
+  jr $ra    # return to main
+ 
+# -----------------------------------------------------------------------------------------------------------
+
 # Handles the emergency state including printing information for first responders.
 doEmergency:
  li $v0, 4      # System call for print string
@@ -197,6 +387,110 @@ doEmergency:
 
 # -----------------------------------------------------------------------------------------------------------
 
+moveDoors:
+ # Check if the elevator is in motion; if so, call invalid.
+ bne  $t9, $zero, invalid
+
+ # Preserve t9 on the stack. (t8 is in a known state and will always be set so we don't need to preserve it)
+ addi $sp, $sp, -4
+ sw   $t9, 0($sp)
+
+ # Print "The doors are "
+ li   $v0, 4         # syscall for print string
+ la   $a0, door      # load address of "The doors are "
+ syscall
+
+ # Print "opening"
+ la   $a0, op        # load address of "opening"
+ syscall
+
+ # Print newline (".\n")
+ la   $a0, nl        # load address of newline string
+ syscall
+
+    # ------------------------------------------------------------------
+    # NOTE: Checking the actual door movement (e.g., waiting for sensor input
+    #       or timing delays) is not implemented here due to differences between
+    #       elevator types. This controller assumes the door operation happens
+    #       instantaneously in the simulation.
+    # ------------------------------------------------------------------
+
+ # Set t8 to 0 to indicate that doors are now closed.
+ li   $t8, 0
+
+ # Print "The doors are "
+ li   $v0, 4
+ la   $a0, door      # re-use door string
+ syscall
+
+ # Print "closing"
+ la   $a0, cl        # load address of "closing"
+ syscall
+
+ # Print newline (".\n")
+ la   $a0, nl
+ syscall
+
+ # Restore t9 (the motion state) from the stack.
+ lw $t9, 0($sp)
+ addi $sp, $sp, 4 # deallocate stack space
+
+ jr $ra # Return to caller (main)
+ 
+
+# -----------------------------------------------------------------------------------------------------------
+
+moveElevator:
+ # Return immediately if $t9 is 0 (i.e., no elevator movement required)
+ addi $sp, $sp, -8 # save things on the stack
+ sw $t8, 0($sp)
+ sw $t9, 4($sp)
+ beq $t9, $zero, elevatordone # if the elevator is not moving, exit.
+ 
+ # Check direction stored in $s7: 1 indicates up, 0 indicates down.
+ bne $s7, $zero, elevatorup 
+ 
+ # Else: Elevator is moving down.
+ # Print "The elevator is moving "
+ li $v0, 4 # string syscall
+ la $a0, mov
+ syscall
+
+ # Print "down"
+ la $a0, dn
+ syscall
+
+ # Print newline
+ la $a0, nl
+ syscall
+ 
+ j elevatordone
+ 
+ elevatorup:
+ # Print "The elevator is moving "
+ li $v0, 4 # string syscall
+ la $a0, mov
+ syscall
+
+ # Print "up"
+ la $a0, up
+ syscall
+
+ # Print newline
+ la $a0, nl
+ syscall
+ 
+ 
+ elevatordone:
+ lw $t8, 0($sp) # restore things on the stack
+ lw $t9, 4($sp)
+ addi $sp, $sp, 8
+ 
+ jr $ra # return to main
+ 
+
+# -----------------------------------------------------------------------------------------------------------
+
 # Main elevator control loop
 main: # The only way this can exit is via a failure state - this is by design, elevators never stop working unless something breaks.
  mainloop:
@@ -212,7 +506,7 @@ main: # The only way this can exit is via a failure state - this is by design, e
   beq $t8, $zero, doorsclosed # $t8=0: doors closed
   
   doorsopen:
-   jal moveDoors # Handle door operations
+   jal moveDoors # Handle door operations - the current implementation does not simulate door opening/closing time, this should be handled by sensors in hardware.
    j mainloop    # Continue cycle
   doorsclosed:
    jal moveElevator # Handle elevator movement
