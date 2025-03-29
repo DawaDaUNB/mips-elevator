@@ -18,7 +18,7 @@ This code is to be a generic system for 5 floor elevators, with any function rel
 The following registers are reserved for values provided by or the hardware.
 - s0: Provides the current location of the elevator (which floor it is on) or, if between floors, the last floor at which it was seen.
 - s1-s5: provides the current state of the call buttons on each floor, in which '00' (0) indicates no activation, '10' (2) indicates up, '01' (1) indicates down and '11' (3) indicates both.
-- s6: provides the current state of the buttons activated within the elevator, '11111' (31) indicating all 5 activated. Bit 6 represents the emergency stop button.
+- s6: provides the current state of the buttons activated within the elevator, '11111' (31) indicating all 5 activated. Bit 6 (100000) represents the emergency stop button.
 - s7: whether the elevator is currently queued to move up or down (1 indicates up)
 
 - t8: indicates whether the doors should be open (1 indicates open)
