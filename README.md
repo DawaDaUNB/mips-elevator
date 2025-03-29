@@ -25,7 +25,7 @@ The following registers are reserved for values provided by or the hardware.
 - t9: indicates if the elevator should currently in motion. (1 indicates yes)
 
 When using syscalls in stub implementations, the t8 and t9 variables will need to be temporarily preserved on the stack.
-The full system will be implemented in a main function looping between the 'checkFloor', 'getCalls', 'getButtons', 'chooseDirection', and exactly one of 'moveDoors' *or* 'moveElevator'
+The full system will be implemented in a main function looping between the 'checkFloor', 'getButtons', 'chooseDirection', and exactly one of 'moveDoors' *or* 'moveElevator'
 
 # Technical Requirements:
 - Use MIPS assembly language programming and test with the MARS simulator.
