@@ -62,7 +62,7 @@ checkFloor:
  
 # -----------------------------------------------------------------------------------------------------------
 
-# Updates button states from user input
+# Updates button states from user input. None of this data needs to be checked for bounds, because all operations are bitwise and unused bits are simply ignored.
 # Clobbers: $v0, $a0
 # Preserves: $t8, $t9 (must be saved due to syscall)
 # Modifies: $s1-$s6 (global state registers)
@@ -88,6 +88,9 @@ getButtons:
  li $v0, 1    # System call for print number
  li $a0, 1    # Load 1
  syscall      # Print the prompt
+ li $v0, 4    # System call for print string
+ la $a0, nl   # Load call button prompt
+ syscall      # Print the prompt
  # Get user input
  li $v0, 5      # System call for read integer
  syscall        # Get input number from user
@@ -99,6 +102,9 @@ getButtons:
  syscall      # Print the prompt
  li $v0, 1    # System call for print number
  li $a0, 2    # Load 2
+ syscall      # Print the prompt
+ li $v0, 4    # System call for print string
+ la $a0, nl   # Load call button prompt
  syscall      # Print the prompt
  # Get user input
  li $v0, 5      # System call for read integer
@@ -112,6 +118,9 @@ getButtons:
  li $v0, 1    # System call for print number
  li $a0, 3    # Load 3
  syscall      # Print the prompt
+ li $v0, 4    # System call for print string
+ la $a0, nl   # Load call button prompt
+ syscall      # Print the prompt
  # Get user input
  li $v0, 5      # System call for read integer
  syscall        # Get input number from user
@@ -123,6 +132,9 @@ getButtons:
  syscall      # Print the prompt
  li $v0, 1    # System call for print number
  li $a0, 4    # Load 4
+ syscall      # Print the prompt
+ li $v0, 4    # System call for print string
+ la $a0, nl   # Load call button prompt
  syscall      # Print the prompt
  # Get user input
  li $v0, 5      # System call for read integer
@@ -136,6 +148,9 @@ getButtons:
  li $v0, 1    # System call for print number
  li $a0, 5    # Load 5
  syscall      # Print the prompt
+ li $v0, 4    # System call for print string
+ la $a0, nl   # Load call button prompt
+ syscall      # Print the prompt
  # Get user input
  li $v0, 5      # System call for read integer
  syscall        # Get input number from user
@@ -148,6 +163,38 @@ getButtons:
  
  jr $ra # return to caller (main)
  
+# -----------------------------------------------------------------------------------------------------------
+
+# Handles the emergency state including printing information for first responders.
+doEmergency:
+ li $v0, 4      # System call for print string
+ la $a0, emerg1 # Load emergency state message
+ syscall        # Print emergency message
+ li $v0, 1      # System call for print integer
+ move $a0, $s0  # load the current floor
+ syscall        # print the current floor
+ li $v0, 4      # System call for print string
+ la $a0, emerg2 # Load emergency state message
+ syscall        # Print emergency message
+ # Check if the elevator was going up or down and print accordingly
+ beq $s7, $zero, emergelse # Check if elevator is going down, then jump to emergelse if so
+ emergif:                  # Label not actually used but makes code look nice
+ la $a0, up                # Load up string, syscall already specified
+ syscall                   # Print emergency message
+ j emergendif              # end if
+ emergelse:                # else label
+ la $a0, dn                # Load down string
+ syscall                   # Print emergency message
+ emergendif:               # end label
+ #Finish the emergency message
+ la $a0, nl     #Load the newline string
+ syscall        # Print the newline
+ la $a0, emerg3 # Load emergency state message
+ syscall        # Print emergency message
+ # Exit.
+ li $v0, 10     # System call for exit
+ syscall        # Terminate program
+
 # -----------------------------------------------------------------------------------------------------------
 
 # Main elevator control loop
