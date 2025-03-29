@@ -1,0 +1,79 @@
+.data
+# String constants
+nl:         .asciiz ".\n"
+flr:        .asciiz "What floor is the elevator on?\n"
+call:       .asciiz "What is the state of the call buttons on floor "
+btn:        .asciiz "What is the state of the interior buttons?\n"
+mov:        .asciiz "The elevator is moving "
+up:         .asciiz "up"
+dn:         .asciiz "down"
+door:       .asciiz "The doors are "
+cl:         .asciiz "closing"
+op:         .asciiz "opening"
+inv:        .asciiz "The elevator is in an invalid state, and this controller is shutting down to prevent damage. Contact a maintenance technician.\n"
+emerg1:     .asciiz "An emergency has occurred in the elevator. It was last seen on floor "
+emerg2:     .asciiz " moving "
+emerg3:     .asciiz "the elevator control script will now exit. Please restart it once the emergency has been resolved.\n"
+
+j main
+
+invalid: # Worst Case handler for invalid data. Exits immediately with a warning and no further action.
+ li $v0, 4   # System call for print string
+ la $a0, inv # Load invalid state message
+ syscall     # Print error message
+ li $v0, 10  # System call for exit
+ syscall     # Terminate program
+
+# Updates elevator floor position from user input
+# Clobbers: $v0, $a0
+# Preserves: $t8, $t9 (must be saved due to syscall)
+# Modifies: $s0 (global state register)
+checkFloor:
+ addi $sp, $sp, -8 # Allocate stack space for 2 registers
+ sw $t8, 0($sp)    # Preserve caller's $t8 (door state)
+ sw $t9, 4($sp)    # Preserve caller's $t9 (motion state)
+ 
+ # Prompt for floor input
+ li $v0, 4   # System call for print string
+ la $a0, flr # Load floor prompt
+ syscall     # Print "What floor is the elevator on?"
+ 
+ # Get user input
+ li $v0, 5 # System call for read integer
+ syscall   # Get floor number from user
+
+ # Input validation (upper bound)
+ bgt $v0, 5, invalid # Jump to error handler if floor > 5
+ blt $v0, 1, invalid # Jump to error handler if floor < 1
+ 
+ # Update global floor state
+ move $s0, $v0 # Store (validated) input in $s0
+ 
+ # Restore preserved data
+ lw $t8, 0($sp)   # Restore $t8
+ lw $t9, 4($sp)   # Restore $t9
+ addi $sp, $sp, 8 # Deallocate stack space
+ 
+ jr $ra # return to caller (main)
+
+
+# Main elevator control loop
+main: # The only way this can exit is via a failure state - this is by design, elevators never stop working unless something breaks.
+ mainloop:
+  jal checkFloor      # Update current floor from input
+  jal getButtons      # Read button states
+  jal chooseDirection # Determine movement direction
+  
+  # Emergency stop detection
+  andi $t0, $s6, 32           # isolate the 6th bit (bit 5 in 0-base)
+  bne $t0, $zero, doEmergency # if the sixth bit of $s0 is 1, the emergency button has been pressed.
+  
+  # Door state decision branch
+  beq $t8, $zero, doorsclosed # $t8=0: doors closed
+  
+  doorsopen:
+   jal moveDoors # Handle door operations
+   j mainloop    # Continue cycle
+  doorsclosed:
+   jal moveElevator # Handle elevator movement
+   j mainloop       # Continue cycle
