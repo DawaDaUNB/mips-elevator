@@ -16,6 +16,8 @@ emerg2:     .asciiz " moving "
 emerg3:     .asciiz "the elevator control script will now exit. Please restart it once the emergency has been resolved.\n"
 
 j main
+ 
+# -----------------------------------------------------------------------------------------------------------
 
 invalid: # Worst Case handler for invalid data. Exits immediately with a warning and no further action.
  li $v0, 4   # System call for print string
@@ -23,6 +25,8 @@ invalid: # Worst Case handler for invalid data. Exits immediately with a warning
  syscall     # Print error message
  li $v0, 10  # System call for exit
  syscall     # Terminate program
+ 
+# -----------------------------------------------------------------------------------------------------------
 
 # Updates elevator floor position from user input
 # Clobbers: $v0, $a0
@@ -55,7 +59,96 @@ checkFloor:
  addi $sp, $sp, 8 # Deallocate stack space
  
  jr $ra # return to caller (main)
+ 
+# -----------------------------------------------------------------------------------------------------------
 
+# Updates button states from user input
+# Clobbers: $v0, $a0
+# Preserves: $t8, $t9 (must be saved due to syscall)
+# Modifies: $s1-$s6 (global state registers)
+getButtons:
+ addi $sp, $sp, -8 # Allocate stack space for 2 registers
+ sw $t8, 0($sp)    # Preserve caller's $t8 (door state)
+ sw $t9, 4($sp)    # Preserve caller's $t9 (motion state)
+ 
+ # Prompt for floor input
+ li $v0, 4   # System call for print string
+ la $a0, btn # Load button prompt
+ syscall     # Print the prompt
+ # Get user input
+ li $v0, 5      # System call for read integer
+ syscall        # Get input number from user
+ move  $s6, $v0 # Save the button data.
+ 
+ # Get each floor's state
+ # Floor 1
+ li $v0, 4    # System call for print string
+ la $a0, call # Load call button prompt
+ syscall      # Print the prompt
+ li $v0, 1    # System call for print number
+ li $a0, 1    # Load 1
+ syscall      # Print the prompt
+ # Get user input
+ li $v0, 5      # System call for read integer
+ syscall        # Get input number from user
+ move  $s1, $v0 # Save the button data.
+ 
+ # Floor 2
+ li $v0, 4    # System call for print string
+ la $a0, call # Load call button prompt
+ syscall      # Print the prompt
+ li $v0, 1    # System call for print number
+ li $a0, 2    # Load 2
+ syscall      # Print the prompt
+ # Get user input
+ li $v0, 5      # System call for read integer
+ syscall        # Get input number from user
+ move  $s2, $v0 # Save the button data.
+ 
+ # Floor 3
+ li $v0, 4    # System call for print string
+ la $a0, call # Load call button prompt
+ syscall      # Print the prompt
+ li $v0, 1    # System call for print number
+ li $a0, 3    # Load 3
+ syscall      # Print the prompt
+ # Get user input
+ li $v0, 5      # System call for read integer
+ syscall        # Get input number from user
+ move  $s3, $v0 # Save the button data.
+ 
+ # Floor 4
+ li $v0, 4    # System call for print string
+ la $a0, call # Load call button prompt
+ syscall      # Print the prompt
+ li $v0, 1    # System call for print number
+ li $a0, 4    # Load 4
+ syscall      # Print the prompt
+ # Get user input
+ li $v0, 5      # System call for read integer
+ syscall        # Get input number from user
+ move  $s4, $v0 # Save the button data.
+ 
+ # Floor 5
+ li $v0, 4    # System call for print string
+ la $a0, call # Load call button prompt
+ syscall      # Print the prompt
+ li $v0, 1    # System call for print number
+ li $a0, 5    # Load 5
+ syscall      # Print the prompt
+ # Get user input
+ li $v0, 5      # System call for read integer
+ syscall        # Get input number from user
+ move  $s5, $v0 # Save the button data.
+ 
+ # Restore preserved data
+ lw $t8, 0($sp)   # Restore $t8
+ lw $t9, 4($sp)   # Restore $t9
+ addi $sp, $sp, 8 # Deallocate stack space
+ 
+ jr $ra # return to caller (main)
+ 
+# -----------------------------------------------------------------------------------------------------------
 
 # Main elevator control loop
 main: # The only way this can exit is via a failure state - this is by design, elevators never stop working unless something breaks.
