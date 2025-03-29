@@ -14,6 +14,7 @@ inv:        .asciiz "The elevator is in an invalid state, and this controller is
 emerg1:     .asciiz "An emergency has occurred in the elevator. It was last seen on floor "
 emerg2:     .asciiz " moving "
 emerg3:     .asciiz "the elevator control script will now exit. Please restart it once the emergency has been resolved.\n"
+.text
 
 j main
  
@@ -348,7 +349,7 @@ chooseDirection:
   
   service_done: jr $ra
   
- no_pending:
+ nopending:
   li $t8, 0 # doors should stay closed
   li $t9, 0 # elevator should stay stopped
   jr $ra    # return to main
