@@ -341,9 +341,9 @@ chooseDirection:
               j service_done
   clrfloor3: and $s3, $s3, $t0
               j service_done
-  clrfloor4: and $s3, $s4, $t0
+  clrfloor4: and $s4, $s4, $t0
               j service_done
-  clrfloor5: and $s4, $s5, $t0
+  clrfloor5: and $s5, $s5, $t0
               j service_done
   
   service_done: jr $ra
@@ -493,6 +493,17 @@ moveElevator:
 
 # Main elevator control loop
 main: # The only way this can exit is via a failure state - this is by design, elevators never stop working unless something breaks.
+ # just incase, initial values
+ li $s0, 0
+ li $s1, 0
+ li $s2, 0
+ li $s3, 0
+ li $s4, 0
+ li $s5, 0
+ li $s6, 0
+ li $s7, 0
+ li $t0, 0
+ li $t1, 0
  mainloop:
   jal checkFloor      # Update current floor from input
   jal getButtons      # Read button states
