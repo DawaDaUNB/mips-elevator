@@ -394,6 +394,9 @@ doEmergency:
 
 # -----------------------------------------------------------------------------------------------------------
 
+# Clobbers: $v0, $a0
+# Preserves: $t9
+# Modifies: $t8
 moveDoors:
  # Check if the elevator is in motion; if so, call invalid.
  bne  $t9, $zero, invalid
@@ -447,6 +450,8 @@ moveDoors:
 
 # -----------------------------------------------------------------------------------------------------------
 
+# Clobbers: $v0, $a0
+# Preserves: $t8, $t9
 moveElevator:
  # Return immediately if $t9 is 0 (i.e., no elevator movement required)
  addi $sp, $sp, -8 # save things on the stack
