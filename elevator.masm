@@ -196,9 +196,13 @@ chooseDirection:
         j currdone
  
  currdone:
+ # need to check if the elevator is moving, and only check the correct direction if so.
+ beq $t9, $zero, nomove
+ move:
  li $t0, 1
  sllv $t0, $t0, $s7 # $t1 = 1 if s7 is 0, 2 if s7 is 1.
  and $t3, $t3, $t0  # mask off up/down for exterior buttons
+ nomove:
  #if either interior or exterior buttons are pending, jump to service them.
  bne $t2, $zero, service # check inside buttons
  bne $t3, $zero, service # check outside buttons
@@ -510,7 +514,7 @@ main: # The only way this can exit is via a failure state - this is by design, e
  mainloop:
   jal checkFloor      # Update current floor from input
   jal getButtons      # Read button states
-  jal chooseDirection # Determine movement direction
+  jal chooseDirection # Determine movement directionl
   
   # Emergency stop detection
   andi $t0, $s6, 32           # isolate the 6th bit (bit 5 in 0-base)
