@@ -254,7 +254,7 @@ chooseDirection:
              j upcheck
              
    upcheck:
-   andi $t4, $t4, 2        # Ensure that we only check for up requests
+   andi $t4, $t4, 3        # Ensure that we only check for up requests
    bne $t4, $zero, foundup # if external request exists, we have a pending call
    j checkuploop # check the next floor
    
@@ -302,7 +302,7 @@ chooseDirection:
              j downcheck
              
    downcheck:
-   andi $t4, $t4, 1        # Ensure that we only check for down requests
+   andi $t4, $t4, 3        # Ensure that we only check for down requests
    bne $t4, $zero, founddown # if external request exists, we have a pending call
    j checkdownloop # check the next floor
    
@@ -494,7 +494,7 @@ moveElevator:
 
 # Main elevator control loop
 main: # The only way this can exit is via a failure state - this is by design, elevators never stop working unless something breaks.
- # just incase, initial values
+ # just incase, initial values. This prevents any garbage data from being loaded, even though it *should* be zeroed beforehand.
  li $s0, 0
  li $s1, 0
  li $s2, 0
@@ -503,8 +503,8 @@ main: # The only way this can exit is via a failure state - this is by design, e
  li $s5, 0
  li $s6, 0
  li $s7, 0
- li $t0, 0
- li $t1, 0
+ li $t8, 0
+ li $t9, 0
  mainloop:
   jal checkFloor      # Update current floor from input
   jal getButtons      # Read button states
